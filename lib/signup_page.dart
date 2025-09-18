@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -78,24 +80,32 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
       isSignupComplete = false;
     });
 
-    _messageAnimationController.reset();
-
     try {
       final aadhaar = _aadhaarController.text.trim();
       final name = _nameController.text.trim();
       final phone = _phoneController.text.trim();
 
-      await Future.delayed(const Duration(seconds: 1));
+      // Generate blockchain hash
+      final blockchainHash = generateBlockchainHash(aadhaar, phone);
 
       final userData = {
         'name': name,
         'phone': phone,
         'aadhaar': '******${aadhaar.substring(6)}',
+        'blockchainHash': blockchainHash,
         'status': 'active',
         'signupDate': DateTime.now().toIso8601String(),
         'lastLogin': DateTime.now().toIso8601String(),
+        'userId': FirebaseFirestore.instance.collection('users').doc().id,
       };
 
+      // Store in Firebase Firestore
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userData['userId'])
+          .set(userData);
+
+      // Also store locally for app functionality
       await secureStorage.write(key: 'aadhaar', value: aadhaar);
       await secureStorage.write(key: 'user_data', value: jsonEncode(userData));
       await secureStorage.write(key: 'is_logged_in', value: 'true');
@@ -104,25 +114,17 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
         isSignupComplete = true;
         isLoading = false;
       });
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => SafetyDashboard()), // Replace NextPage() with actual page widget
+      );
 
-      _messageAnimationController.forward();
-
-      await Future.delayed(const Duration(milliseconds: 1500));
-
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const SafetyDashboard(),
-          ),
-        );
-      }
+      // Rest of your existing code...
     } catch (e) {
       setState(() {
         errorMessage = 'Signup failed: ${e.toString()}';
         isLoading = false;
       });
-      _messageAnimationController.forward();
     }
   }
 
@@ -381,6 +383,13 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
     );
   }
 
+  String generateBlockchainHash(String aadhaar, String phone) {
+    final input = '$aadhaar$phone${DateTime.now().millisecondsSinceEpoch}';
+    final bytes = utf8.encode(input);
+    final digest = sha256.convert(bytes);
+    return digest.toString().substring(0, 32); // 32-bit hash
+  }
+
   Widget _buildInputField({
     required TextEditingController controller,
     required String label,
@@ -486,6 +495,7 @@ class _SignupPageState extends State<SignupPage> with TickerProviderStateMixin {
           ],
         ),
       );
+
     } else {
       return const SizedBox.shrink();
     }

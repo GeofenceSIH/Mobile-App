@@ -1,14 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:sih/main.dart';
+import 'package:sih/risk_area.dart';
+
 import 'package:sih/signup_page.dart';
 import 'dart:async';
 
-import 'package:sih/tourist-safety-maps.dart';
+import 'package:sih/tourist-safety-maps.dart' hide RiskArea;
 import 'main.dart';
 
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({super.key});
+  final List<RiskArea> riskAreas;
+  final Position initialPosition;
+
+  const SplashScreen({
+    super.key,
+    required this.riskAreas,
+    required this.initialPosition,
+  });
+
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
@@ -135,7 +146,7 @@ class _SplashScreenState extends State<SplashScreen>
       context,
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) =>
-        const SafetyDashboard(),
+            SafetyDashboard(),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(opacity: animation, child: child);
         },
@@ -144,12 +155,13 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 
+
   void _navigateToLogin() {
     Navigator.pushReplacement(
       context,
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) =>
-        const SignupPage(),
+        const SafetyDashboard(),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(opacity: animation, child: child);
         },
